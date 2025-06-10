@@ -1,0 +1,17 @@
+name: TeamTagGame
+version: '1.0-SNAPSHOT'
+main: com.Bluehat_R.teamTagGame.TeamTagGame
+api-version: '1.20'
+author: [ Ryuuu_blue ]
+description: チーム使用-鬼ごっこプラグイン
+
+commands:
+  tag:
+    description: "鬼ごっこプラグインのメインコマンド"
+    usage: "/tag <subcommand>"
+    permission: teamtaggame.commands.*
+
+permissions:
+  teamtaggame.commands.*:
+    description: "鬼ごっこプラグインのすべてのコマンド"
+    default: op
