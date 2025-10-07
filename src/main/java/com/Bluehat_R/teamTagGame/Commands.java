@@ -33,38 +33,29 @@ public class Commands implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
-        if (strings[0].isEmpty()) {
+        if (strings.length == 0) {
             commandSender.sendMessage("サブコマンドが必要です");
             return false;
         }
 
         if (strings[0].equalsIgnoreCase("reload")) {
-            TeamTagGame.plugin.noSaveReloadConfig();
+            TeamTagGame.plugin.reloadConfig();
             commandSender.sendMessage(miniMessage.deserialize("<yellow>config.ymlを再読込しました. "));
             return true;
         }
 
-        final boolean[] isconsoler = {false};
+        boolean isConsole = !(commandSender instanceof Player);
+        List<String> playerOnlyCommands = Lists.newArrayList("start", "stop");
 
-        ArrayList<String> consolecommands = Lists.newArrayList("start", "stop");
-
-        consolecommands.forEach(consolecommand -> {
-            if (strings[0].equalsIgnoreCase(consolecommand)) {
-                if (!(commandSender instanceof Player)) {
-                    isconsoler[0] = true;
-                }
-            }
-        });
-
-        if (isconsoler[0]) {
+        if (playerOnlyCommands.contains(strings[0].toLowerCase()) && isConsole) {
             commandSender.sendMessage(miniMessage.deserialize("このコマンドはプレイヤーのみ実行できます！"));
             return false;
         }
 
-        switch (strings[0]) {
+        switch (strings[0].toLowerCase()) {
             case "start" -> {
                 if (checkStart(commandSender)) return true;
-                if (TeamTagGame.endPoint.getSize() < 1 + TeamTagGame.config.getInt("hunter", 2)) {
+                if (TeamTagGame.endPoint.getSize() < 1 + TeamTagGame.plugin.getConfig().getInt("hunter", 2)) {
                     commandSender.sendMessage(miniMessage.deserialize("<red>必要な人数に満たないため開始できません！ "));
                     return true;
                 }
@@ -76,7 +67,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                 final BossBar bossBar = Bukkit.createBossBar("まもなく開始…", BarColor.BLUE, BarStyle.SOLID);
                 bossBar.setProgress(1.0);
                 bossBar.setVisible(true);
-                TeamTagGame.timer = new Timer(TeamTagGame.config.getInt("time", 10) * 60, TeamTagGame.bossBar);
+                TeamTagGame.timer = new Timer(TeamTagGame.plugin.getConfig().getInt("time", 10) * 60, TeamTagGame.bossBar);
 
                 final Random random = new Random();
                 Scoreboard scoreboard = TeamTagGame.plugin.getServer().getScoreboardManager().getMainScoreboard();
@@ -86,10 +77,8 @@ public class Commands implements CommandExecutor, TabCompleter {
 
                 Collection<String> entryPlayers = entryTeam.getEntries();
 
-                for (int i = 0; i < TeamTagGame.config.getInt("hunter", 2); i++) {
-                    if (entryPlayers.isEmpty()) {
-                        break;
-                    }
+                for (int i = 0; i < TeamTagGame.plugin.getConfig().getInt("hunter", 2); i++) {
+                    if (entryPlayers.isEmpty()) break;
 
                     int index = random.nextInt(entryPlayers.size());
                     String playerName = (String) entryPlayers.toArray()[index];
@@ -104,7 +93,6 @@ public class Commands implements CommandExecutor, TabCompleter {
 
                 if (escapeTeam != null) {
                     Collection<String> endPointPlayers = entryTeam.getEntries();
-
                     for (String playerName : endPointPlayers) {
                         Player target = TeamTagGame.plugin.getServer().getPlayer(playerName);
                         if (target != null) {
@@ -121,19 +109,19 @@ public class Commands implements CommandExecutor, TabCompleter {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            final int x = TeamTagGame.config.getInt("escape-start.x", 0);
-                            final int y = TeamTagGame.config.getInt("escape-start.y", 0);
-                            final int z = TeamTagGame.config.getInt("escape-start.z", 0);
-                            final float yaw = (float) TeamTagGame.config.getDouble("escape-start.yaw", 0.0);
-                            final float pitch = (float) TeamTagGame.config.getDouble("escape-start.pitch", 0.0);
+                            var cfg = TeamTagGame.plugin.getConfig();
+                            final int x = cfg.getInt("escape-start.x", 0);
+                            final int y = cfg.getInt("escape-start.y", 0);
+                            final int z = cfg.getInt("escape-start.z", 0);
+                            final float yaw = (float) cfg.getDouble("escape-start.yaw", 0.0);
+                            final float pitch = (float) cfg.getDouble("escape-start.pitch", 0.0);
                             target.teleport(new Location(target.getWorld(), x, y, z, yaw, pitch));
                             TeamTagGame.bossBar.addPlayer(target);
                             bossBar.addPlayer(target);
                             target.setGameMode(GameMode.ADVENTURE);
                             target.sendMessage(miniMessage.deserialize("<green>あなたは逃走者チームになりました！"));
                             target.getInventory().clear();
-                            final ItemStack itemStack = new ItemStack(Material.COOKED_BEEF, 64);
-                            target.getInventory().addItem(itemStack);
+                            target.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
                         }
                     }.runTask(TeamTagGame.plugin);
                 }
@@ -144,19 +132,19 @@ public class Commands implements CommandExecutor, TabCompleter {
                     new BukkitRunnable() {
                         @Override
                         public void run() {
-                            final int x = TeamTagGame.config.getInt("hunter-start.x", 0);
-                            final int y = TeamTagGame.config.getInt("hunter-start.y", 0);
-                            final int z = TeamTagGame.config.getInt("hunter-start.z", 0);
-                            final float yaw = (float) TeamTagGame.config.getDouble("hunter-start.yaw", 0.0);
-                            final float pitch = (float) TeamTagGame.config.getDouble("hunter-start.pitch", 0.0);
+                            var cfg = TeamTagGame.plugin.getConfig();
+                            final int x = cfg.getInt("hunter-start.x", 0);
+                            final int y = cfg.getInt("hunter-start.y", 0);
+                            final int z = cfg.getInt("hunter-start.z", 0);
+                            final float yaw = (float) cfg.getDouble("hunter-start.yaw", 0.0);
+                            final float pitch = (float) cfg.getDouble("hunter-start.pitch", 0.0);
                             target.teleport(new Location(target.getWorld(), x, y, z, yaw, pitch));
                             TeamTagGame.bossBar.addPlayer(target);
                             bossBar.addPlayer(target);
                             target.setGameMode(GameMode.ADVENTURE);
                             target.sendMessage(miniMessage.deserialize("<green>あなたは鬼チームになりました！"));
                             target.getInventory().clear();
-                            final ItemStack itemStack = new ItemStack(Material.COOKED_BEEF, 64);
-                            target.getInventory().addItem(itemStack);
+                            target.getInventory().addItem(new ItemStack(Material.COOKED_BEEF, 64));
                         }
                     }.runTask(TeamTagGame.plugin);
                 }
@@ -171,7 +159,6 @@ public class Commands implements CommandExecutor, TabCompleter {
 
                 new BukkitRunnable() {
                     int i = 10;
-
                     @Override
                     public void run() {
                         if (i <= -1) {
@@ -192,129 +179,32 @@ public class Commands implements CommandExecutor, TabCompleter {
 
             case "stop" -> {
                 if (!TeamTagGame.isStart) {
-                    commandSender.sendMessage("まだ開始されていないため実行できません. ");
+                    commandSender.sendMessage("まだ開始されていないため実行できません.");
                     return true;
                 }
-
                 new EndGame().stop();
-                commandSender.sendMessage(miniMessage.deserialize("<green>鬼ごっこをコマンドで強制終了させました. "));
-            }
-
-            case "join" -> {
-
-                if (strings.length == 1) {
-                    if (checkStart(commandSender)) return true;
-                    if (commandSender instanceof Player player) {
-                        if (TeamTagGame.endPoint.getEntries().contains(player)) {
-                            commandSender.sendMessage(miniMessage.deserialize("<red>既に参加しているため実行できません！ "));
-                            return true;
-                        } else {
-                            TeamTagGame.endPoint.addEntity(player);
-                            commandSender.sendMessage(miniMessage.deserialize("<aqua>鬼ごっこの待機グループに参加しました！ "));
-                        }
-                    }
-
-                } else {
-                    if (strings.length == 2) {
-                        if (checkStart(commandSender)) return true;
-
-                        final Player target = TeamTagGame.plugin.getServer().getPlayer(strings[1]);
-                        if (target == null) {
-                            commandSender.sendMessage(miniMessage.deserialize("<red>" + strings[1] + "が見つかりませんでした. "));
-                            return true;
-                        }
-
-                        if (TeamTagGame.endPoint.getEntries().contains(target)) {
-                            commandSender.sendMessage(miniMessage.deserialize("<red>既に" + strings[1] + "は参加しています！ "));
-                            return true;
-                        }
-
-                        addPlayerToTeam(target, "endPoint");
-                        commandSender.sendMessage(miniMessage.deserialize("<aqua>鬼ごっこの待機グループに" + strings[1] + "を参加させました！ "));
-                        target.sendMessage(miniMessage.deserialize("<aqua>あなたは鬼ごっこの待機グループに参加しました！ "));
-                    }
-                }
-            }
-
-            case "joinall" -> {
-                if (checkStart(commandSender)) return true;
-
-                int i = 0;
-                for (final Player target : TeamTagGame.plugin.getServer().getOnlinePlayers()) {
-                    if (TeamTagGame.endPoint.getEntries().contains(target)) {
-                        continue;
-                    }
-
-                    addPlayerToTeam(target, "endPoint");
-                    target.sendMessage(miniMessage.deserialize("<aqua>あなたは鬼ごっこの待機グループに参加しました！ "));
-                    i++;
-                }
-
-                commandSender.sendMessage(miniMessage.deserialize("<aqua>" + i + "名のプレイヤーを参加させました！"));
-            }
-
-            case "leave" -> {
-                if (strings.length == 1) {
-                    if (checkStart(commandSender)) return true;
-                    if (commandSender instanceof Player player) {
-                        if (!TeamTagGame.endPoint.getEntries().contains(player)) {
-                            commandSender.sendMessage(miniMessage.deserialize("<red>元々参加していません！ "));
-                        } else {
-                            removePlayerToTeam(player, "endPoint");
-                            commandSender.sendMessage(miniMessage.deserialize("<green>鬼ごっこの待機グループから退出しました！ "));
-                        }
-                    }
-                } else {
-                    if (strings.length == 2) {
-                        if (checkStart(commandSender)) return true;
-                    }
-
-                    final Player target = TeamTagGame.plugin.getServer().getPlayer(strings[1]);
-                    if (target == null) {
-                        commandSender.sendMessage(miniMessage.deserialize("<red>" + strings[1] + "は元々参加していません！ "));
-                        return true;
-                    }
-
-                    removePlayerToTeam(target, "endPoint");
-                    commandSender.sendMessage(miniMessage.deserialize("<green>鬼ごっこの待機グループから" + strings[1] + "を退出させました！ "));
-                    target.sendMessage(miniMessage.deserialize("<green>鬼ごっこの待機グループから退出しました！ "));
-                }
+                commandSender.sendMessage(miniMessage.deserialize("<green>鬼ごっこを強制終了しました."));
             }
 
             case "set" -> {
                 if (checkStart(commandSender)) return true;
                 if (strings.length == 2) {
-                    if (!strings[1].isEmpty()) {
-                        switch (strings[1]) {
-                            case "escape" -> setLocation(commandSender, "escape");
-                            case "hunter" -> setLocation(commandSender, "hunter");
-                            case "end" -> setLocation(commandSender, "end");
-                        }
+                    switch (strings[1]) {
+                        case "escape" -> setLocation(commandSender, "escape");
+                        case "hunter" -> setLocation(commandSender, "hunter");
+                        case "end" -> setLocation(commandSender, "end");
                     }
                 } else if (strings.length == 3) {
-                    if (!strings[1].isEmpty()) {
-                        switch (strings[1]) {
-                            case "size" -> {
-                                if (!strings[2].isEmpty()) {
-                                    if (strings[2].chars().allMatch(Character::isDigit)) {
-                                        final int size = Integer.parseInt(strings[2]);
-                                        TeamTagGame.config.set("hunter", size);
-                                        TeamTagGame.plugin.saveReloadConfig();
-                                        commandSender.sendMessage(miniMessage.deserialize("<aqua>ハンターの人数を" + size + "人に設定しました."));
-                                    }
-                                }
-                            }
-                            case "time" -> {
-                                if (!strings[2].isEmpty()) {
-                                    if (strings[2].chars().allMatch(Character::isDigit)) {
-                                        final int time = Integer.parseInt(strings[2]);
-                                        TeamTagGame.config.set("time", time);
-                                        TeamTagGame.plugin.saveReloadConfig();
-                                        commandSender.sendMessage(miniMessage.deserialize("<aqua>制限時間を" + time + "分に設定しました."));
-                                    }
-                                }
-                            }
-                        }
+                    if (strings[1].equalsIgnoreCase("size") && strings[2].chars().allMatch(Character::isDigit)) {
+                        int size = Integer.parseInt(strings[2]);
+                        TeamTagGame.plugin.getConfig().set("hunter", size);
+                        TeamTagGame.plugin.saveConfig();
+                        commandSender.sendMessage(miniMessage.deserialize("<aqua>ハンター人数を" + size + "人に設定しました."));
+                    } else if (strings[1].equalsIgnoreCase("time") && strings[2].chars().allMatch(Character::isDigit)) {
+                        int time = Integer.parseInt(strings[2]);
+                        TeamTagGame.plugin.getConfig().set("time", time);
+                        TeamTagGame.plugin.saveConfig();
+                        commandSender.sendMessage(miniMessage.deserialize("<aqua>制限時間を" + time + "分に設定しました."));
                     }
                 }
             }
@@ -358,69 +248,24 @@ public class Commands implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
-        final List<String> complete = new ArrayList<>();
-
-        if (strings.length == 1) {
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
+        List<String> complete = new ArrayList<>();
+        if (args.length == 1) {
             List<String> options = Arrays.asList("reload", "join", "joinall", "leave", "start", "set", "list", "stop");
-
-            for (String option : options) {
-                if (option.startsWith(strings[0].toLowerCase())) {
-                    complete.add(option);
-                }
-            }
-        } else if (strings.length == 2) {
-            if (strings[0].equalsIgnoreCase("join")) {
-                for (Player target : Bukkit.getOnlinePlayers()) {
-                    if (strings[1].isEmpty() || target.getName().toLowerCase().startsWith(strings[1].toLowerCase())) {
-                        complete.add(target.getName());
-                    }
-                }
-            } else if (strings[0].equalsIgnoreCase("set")) {
-                List<String> setOptions = Arrays.asList("escape", "hunter", "end", "size", "time");
-
-                for (String option : setOptions) {
-                    if (option.startsWith(strings[1].toLowerCase())) {
-                        complete.add(option);
-                    }
-                }
-            }
+            for (String opt : options) if (opt.startsWith(args[0].toLowerCase())) complete.add(opt);
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("set")) {
+            List<String> setOptions = Arrays.asList("escape", "hunter", "end", "size", "time");
+            for (String opt : setOptions) if (opt.startsWith(args[1].toLowerCase())) complete.add(opt);
         }
-
         return complete;
     }
 
-
-    public boolean checkStart(CommandSender commandSender) {
+    public boolean checkStart(CommandSender sender) {
         if (TeamTagGame.isStart) {
-            commandSender.sendMessage(miniMessage.deserialize("既に開始されているため実行できません. "));
+            sender.sendMessage(miniMessage.deserialize("既に開始されているため実行できません."));
             return true;
         }
         return false;
-    }
-
-    public void addPlayerToTeam(Player player, String teamName) {
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
-        Team team = scoreboard.getTeam(teamName);
-
-        if (team == null) {
-            team = scoreboard.registerNewTeam(teamName);
-            team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
-        }
-
-        team.addEntry(player.getName());
-    }
-
-    public void removePlayerToTeam(Player player, String teamName) {
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getMainScoreboard();
-        Team team = scoreboard.getTeam(teamName);
-
-        if (team == null) {
-            player.sendMessage(miniMessage.deserialize("<red>チームがありません！ "));
-            return;
-        }
-
-        team.removeEntry(player.getName());
     }
 
     public void setLocation(CommandSender sender, String type) {
@@ -429,37 +274,27 @@ public class Commands implements CommandExecutor, TabCompleter {
             return;
         }
 
-        final Location location = player.getLocation();
-        String pathPrefix = "";
+        String pathPrefix = switch (type) {
+            case "escape" -> "escape-start";
+            case "hunter" -> "hunter-start";
+            case "end" -> "end-game";
+            default -> null;
+        };
 
-        switch (type) {
-            case "escape":
-                pathPrefix = "escape-start";
-                break;
-            case "hunter":
-                pathPrefix = "hunter-start";
-                break;
-            case "end":
-                pathPrefix = "end-game";
-                break;
-            default:
-                sender.sendMessage("無効なタイプです。");
-                return;
+        if (pathPrefix == null) {
+            sender.sendMessage("無効なタイプです。");
+            return;
         }
 
-        TeamTagGame.config.set(pathPrefix + ".x", location.getBlockX());
-        TeamTagGame.config.set(pathPrefix + ".y", location.getBlockY());
-        TeamTagGame.config.set(pathPrefix + ".z", location.getBlockZ());
-        TeamTagGame.config.set(pathPrefix + ".yaw", location.getYaw());
-        TeamTagGame.config.set(pathPrefix + ".pitch", location.getPitch());
+        Location loc = player.getLocation();
+        var cfg = TeamTagGame.plugin.getConfig();
+        cfg.set(pathPrefix + ".x", loc.getBlockX());
+        cfg.set(pathPrefix + ".y", loc.getBlockY());
+        cfg.set(pathPrefix + ".z", loc.getBlockZ());
+        cfg.set(pathPrefix + ".yaw", loc.getYaw());
+        cfg.set(pathPrefix + ".pitch", loc.getPitch());
+        TeamTagGame.plugin.saveConfig();
 
-        TeamTagGame.plugin.saveReloadConfig();
-        player.sendMessage(miniMessage.deserialize(type + "の開始地点を登録しました．"));
+        player.sendMessage(miniMessage.deserialize("<aqua>" + type + "の開始地点を登録しました."));
     }
-
-    private boolean isAuthor(String playerName) {
-        List<String> authors = TeamTagGame.plugin.getDescription().getAuthors();
-        return authors.contains(playerName);
-    }
-
 }
